@@ -1,0 +1,35 @@
+csp_title = Content Security Policy
+csp_profiles = Profiles
+csp_reports = Reports
+csp_help = Help
+
+csp_profiles_intro = A profile applies to every host that matches one of its patterns. The first matching profile in file order wins. The file lives in <code>redaxo/data/addons/csp/profiles.yml</code> and belongs in the project repository. A change made here is overwritten by the next deploy when the file in the repository differs.
+csp_profiles_file = Profiles (YAML)
+csp_profiles_save = Save and check
+csp_profiles_saved = The profiles have been saved.
+csp_profiles_invalid = The profiles were not saved:
+csp_profiles_preview = Preview per profile
+csp_profiles_current_host = Current host
+csp_profiles_no_match = No profile matches this host, no header is sent.
+csp_profiles_unreadable = The file could not be read:
+csp_profile_name = Profile
+csp_profile_hosts = Hosts
+csp_profile_mode = Mode
+csp_profile_header = Header
+csp_profile_active = matches this host
+csp_profile_warnings = Notes
+
+csp_reports_intro = Violations that browsers send to the report endpoint. Only the directive, the blocked source (origin only), the path of the page without query and a short code sample are stored, no IP address and no user agent. Identical reports are counted.
+csp_reports_empty = There are no reports.
+csp_reports_directive = Directive
+csp_reports_blocked = Blocked
+csp_reports_path = Page
+csp_reports_disposition = Type
+csp_reports_hits = Count
+csp_reports_last = Last seen
+csp_reports_sample = Sample
+csp_reports_delete = Delete
+csp_reports_delete_all = Delete all reports
+csp_reports_deleted = The reports have been deleted.
+csp_reports_confirm_all = Really delete all reports?
+csp_reports_limit = Limit reached: new reports are not recorded until reports are deleted.

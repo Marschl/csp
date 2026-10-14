@@ -1,0 +1,18 @@
+package: csp
+version: '0.1.0'
+author: 'Marcel Scherkamp'
+supportpage: ''
+
+page:
+    title: 'translate:csp_title'
+    perm: csp[]
+    icon: rex-icon fa-shield
+    subpages:
+        profiles: { title: 'translate:csp_profiles' }
+        reports: { title: 'translate:csp_reports' }
+        help: { title: 'translate:csp_help', subPath: README.md, itemClass: pull-right }
+
+requires:
+    redaxo: '^5.18.0'
+    php:
+        version: '>=8.1'
