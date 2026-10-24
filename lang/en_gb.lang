@@ -3,7 +3,10 @@ csp_profiles = Profiles
 csp_reports = Reports
 csp_help = Help
 
+perm_general_csp[] = Content Security Policy: profiles and reports
+
 csp_profiles_intro = A profile applies to every host that matches one of its patterns. The first matching profile in file order wins. The file lives in <code>redaxo/data/addons/csp/profiles.yml</code> and belongs in the project repository. A change made here is overwritten by the next deploy when the file in the repository differs.
+csp_profiles_live = Live mode is active, so the profiles cannot be changed here. They are stored in <code>redaxo/data/addons/csp/profiles.yml</code>. If the website is published by a deploy or from Git, change the file in the project. Without a deploy, edit the file directly on the server (for example by FTP or SFTP), the change applies at once.
 csp_profiles_file = Profiles (YAML)
 csp_profiles_save = Save and check
 csp_profiles_saved = The profiles have been saved.

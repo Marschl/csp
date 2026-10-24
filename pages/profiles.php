@@ -4,11 +4,14 @@ $addon = rex_addon::get('csp');
 $csrf = rex_csrf_token::factory('csp_profiles');
 $file = csp_profiles::file();
 
+// In live mode the backend does not change configuration (no settings, no package management), so the profiles are shown only
+$readOnly = rex::isLiveMode();
+
 $yaml = (string) rex_file::get($file, '');
 $errors = [];
 $saved = false;
 
-if (rex_post('save', 'bool') && $csrf->isValid()) {
+if (!$readOnly && rex_post('save', 'bool') && $csrf->isValid()) {
     $yaml = str_replace("\r\n", "\n", rex_post('yaml', 'string', ''));
     try {
         $decoded = rex_string::yamlDecode($yaml);
@@ -35,14 +38,17 @@ if ($problems) {
     echo rex_view::warning(rex_i18n::msg('csp_profiles_unreadable') . '<ul><li>' . implode('</li><li>', array_map('rex_escape', $problems)) . '</li></ul>');
 }
 
-echo rex_view::info(rex_i18n::msg('csp_profiles_intro'));
+echo rex_view::info(rex_i18n::msg($readOnly ? 'csp_profiles_live' : 'csp_profiles_intro'));
 
-$body = '<form action="' . rex_url::currentBackendPage() . '" method="post">'
-    . $csrf->getHiddenField()
-    . '<div class="form-group"><label for="csp-yaml">' . rex_i18n::msg('csp_profiles_file') . '</label>'
-    . '<textarea class="form-control" id="csp-yaml" name="yaml" rows="22" spellcheck="false" style="font-family:monospace">' . rex_escape($yaml) . '</textarea></div>'
-    . '<button class="btn btn-save" type="submit" name="save" value="1">' . rex_i18n::msg('csp_profiles_save') . '</button>'
-    . '</form>';
+$field = '<div class="form-group"><label for="csp-yaml">' . rex_i18n::msg('csp_profiles_file') . '</label>'
+    . '<textarea class="form-control" id="csp-yaml" name="yaml" rows="22" spellcheck="false" style="font-family:monospace"' . ($readOnly ? ' readonly' : '') . '>' . rex_escape($yaml) . '</textarea></div>';
+$body = $readOnly
+    ? $field
+    : '<form action="' . rex_url::currentBackendPage() . '" method="post">'
+        . $csrf->getHiddenField()
+        . $field
+        . '<button class="btn btn-save" type="submit" name="save" value="1">' . rex_i18n::msg('csp_profiles_save') . '</button>'
+        . '</form>';
 
 $fragment = new rex_fragment();
 $fragment->setVar('title', rex_i18n::msg('csp_profiles_file'), false);

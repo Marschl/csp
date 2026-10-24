@@ -8,7 +8,13 @@ endpoint so a policy can be observed before it is enforced.
   with the deploy. The backend page edits the same file and validates it before saving.
 - **Per-request nonce** with a correctly quoted header value (`'nonce-…'`)
 - **Violation reports**, stored aggregated, without IP address or user agent
-- No dependencies. Requires REDAXO 5.18+, PHP 8.1+.
+- No dependencies. Requires REDAXO 5.21.4+, PHP 8.1+. Older REDAXO versions are not tested and not supported.
+
+## Installation
+
+After the installation a profile `Default` exists for **all** hosts, with `mode: report-only` and reports switched on. It only
+observes and blocks nothing, but the website sends a `Content-Security-Policy-Report-Only` header from the first request on.
+Adjust it under *Profiles*, or set `mode: off` to stay silent. Reinstalling keeps an existing `profiles.yml`.
 
 ## Profiles
 
@@ -44,8 +50,14 @@ line breaks), unknown directives, `'none'` combined with other sources.
 Not an error but a warning in the backend preview: `'unsafe-inline'` next to a nonce, a hash or `'strict-dynamic'`.
 Browsers then **ignore** `'unsafe-inline'`, so every inline script without a nonce is blocked.
 
-> The profiles file is read from the project. If the backend is used on the live server, the next deploy overwrites
-> the change with the file from the repository.
+> The file is read on every request, a change applies at once. With a deploy, change the file in the project: the next deploy
+> overwrites a change made in the backend. Many projects ignore `redaxo/data` in Git, so add an exception for
+> `redaxo/data/addons/csp/profiles.yml`. Without a deploy, edit the file directly on the server (FTP/SFTP).
+>
+> With `live_mode: true` in REDAXO's `config.yml` the backend shows the profiles read-only (preview and warnings stay).
+> Recommended for production systems, because the backend then cannot diverge from the deployed file.
+
+While the file is invalid, every request writes an entry to the REDAXO log until it is fixed.
 
 ## Roll-out: observe first, then enforce
 
@@ -75,6 +87,9 @@ csp::addPolicy('img-src', 'https://tiles.example.org');
 The header is sent right before the output, so modules and templates can still add sources while the page renders.
 Invalid input throws in debug mode and is logged otherwise.
 
+The classes are called `csp`, `csp_policy`, `csp_profiles`, `csp_report` and `csp_report_store`. If your project already has a
+class `csp`, rename one of them before you install.
+
 ## Report endpoint and privacy
 
 `POST /index.php?rex-api-call=csp_report` accepts `application/csp-report` and `application/reports+json` and always
@@ -92,7 +107,11 @@ Delete reports under *Reports* in the backend. Uninstalling the addon drops the 
 php tests/run.php
 ```
 
-No framework and no REDAXO boot needed. They cover the header builder, the profile text parser and the report parser.
+No framework and no REDAXO boot needed. They cover the header builder, the profile text parser, the profiles file checks (host patterns, validation) and the report parser.
+
+## Feedback
+
+Bugs and ideas as an issue on [GitHub](https://github.com/Marschl/csp/issues). Security problems: see `SECURITY.md`.
 
 ## License
 

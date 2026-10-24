@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0
+
+- Fix: the right `csp[]` is registered, so it appears in the role form (with a label) and editors with that role can open the pages
+- Tests for the profiles file: host patterns (case, port, wildcards), validation of every field, the seeded default profile (71 → 109 checks)
+- Release files: `SECURITY.md`, issue templates, `README.txt`; `supportpage` points to GitHub
+- Requires REDAXO 5.21.4 (the version it was tested with), older versions are not tested
+- Live mode (`live_mode: true`): the profiles page is read-only (preview and warnings stay), a POST is ignored on the server
+- README: what a fresh install sends, the Git exception for `profiles.yml`, class names
+- Checked in a real REDAXO 5.21.4: install, reinstall (keeps `profiles.yml`), uninstall (drops the table), header for report-only/enforce/nonce, report endpoint with both formats, profile and report pages as admin and as editor, broken profiles file
+
 ## 0.1.0
 
 First version, extracted from a project-specific helper class.

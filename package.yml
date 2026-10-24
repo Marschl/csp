@@ -1,7 +1,7 @@
 package: csp
-version: '0.1.0'
+version: '0.2.0'
 author: 'Marcel Scherkamp'
-supportpage: ''
+supportpage: https://github.com/Marschl/csp
 
 page:
     title: 'translate:csp_title'
@@ -13,6 +13,6 @@ page:
         help: { title: 'translate:csp_help', subPath: README.md, itemClass: pull-right }
 
 requires:
-    redaxo: '^5.18.0'
+    redaxo: '^5.21.4'
     php:
         version: '>=8.1'

@@ -1,12 +1,13 @@
 <?php
 
 /**
- * Tests for csp_policy. No framework and no REDAXO boot needed:
+ * Tests for csp_policy, csp_report and the pure parts of csp_profiles. No framework and no REDAXO boot needed:
  *
  *     php tests/run.php
  */
 require __DIR__ . '/../lib/csp_policy.php';
 require __DIR__ . '/../lib/csp_report.php';
+require __DIR__ . '/../lib/csp_profiles.php';
 
 $results = [];
 $check = static function (string $name, bool $ok, string $detail = '') use (&$results): void {
@@ -156,6 +157,59 @@ $check('directive with odd characters is dropped', csp_report::parse(json_encode
 $check('very long values are cut', strlen(csp_report::parse(json_encode(['csp-report' => ['effective-directive' => 'img-src', 'document-uri' => 'https://k.example/' . str_repeat('a', 5000), 'script-sample' => str_repeat('x', 5000)]]))[0]['path']) <= 255);
 $many = json_encode(array_fill(0, 100, ['type' => 'csp-violation', 'body' => ['effectiveDirective' => 'img-src']]));
 $check('at most 20 entries are taken from a report-to batch', count(csp_report::parse($many)) === 20);
+
+// Profiles: only the pure parts (normalize, matches, policy, defaults). Reading and writing the file needs REDAXO.
+$profile = static fn (array $over = []): array => array_replace(['name' => 'Live', 'hosts' => ['example.org'], 'mode' => 'enforce', 'report' => false, 'policy' => ["default-src 'self'"]], $over);
+
+[$list, $e] = csp_profiles::normalize(['profiles' => [$profile()]]);
+$check('a valid profile normalizes without errors', $e === [] && count($list) === 1, implode(' | ', $e));
+$check('normalized policy lines are in header spelling', ($list[0]['policy'] ?? []) === ["default-src 'self'"]);
+[$list, $e] = csp_profiles::normalize(['profiles' => [$profile(['policy' => ['default-src self', 'script-src self nonce']])]]);
+$check('unquoted keywords are quoted when normalized', ($list[0]['policy'] ?? []) === ["default-src 'self'", "script-src 'self' 'nonce'"], implode(' | ', $list[0]['policy'] ?? []));
+[$list, $e] = csp_profiles::normalize(['profiles' => [$profile(['policy' => "default-src 'self'\nimg-src data:"])]]);
+$check('policy as a multi-line string is accepted', $e === [] && count($list[0]['policy']) === 2, implode(' | ', $e));
+$check('the seeded default profile is valid', csp_profiles::normalize(['profiles' => csp_profiles::defaults()])[1] === []);
+$check('the seeded default profile observes only', csp_profiles::defaults()[0]['mode'] === 'report-only' && csp_profiles::defaults()[0]['report'] === true);
+
+foreach ([
+    'null' => null,
+    'no profiles key' => ['other' => []],
+    'profiles is a map' => ['profiles' => ['a' => $profile()]],
+    'profile is a scalar' => ['profiles' => ['x']],
+    'name missing' => ['profiles' => [$profile(['name' => ''])]],
+    'name is not a string' => ['profiles' => [$profile(['name' => 5])]],
+    'hosts empty' => ['profiles' => [$profile(['hosts' => []])]],
+    'host with a slash' => ['profiles' => [$profile(['hosts' => ['example.org/path']])]],
+    'host with a space' => ['profiles' => [$profile(['hosts' => ['a b']])]],
+    'one bad host among good ones' => ['profiles' => [$profile(['hosts' => ['example.org', 'bad host']])]],
+    'mode unknown' => ['profiles' => [$profile(['mode' => 'block'])]],
+    'mode missing' => ['profiles' => [['name' => 'x', 'hosts' => ['a.example'], 'policy' => []]]],
+    'policy is a number' => ['profiles' => [$profile(['policy' => 5])]],
+    'policy line is not a string' => ['profiles' => [$profile(['policy' => [['x']]])]],
+    'policy has an injected directive' => ['profiles' => [$profile(['policy' => ["default-src 'self'; script-src *"]])]],
+    'policy has a fixed nonce' => ['profiles' => [$profile(['policy' => ["script-src 'nonce-abc'"]])]],
+    'policy has an unknown directive' => ['profiles' => [$profile(['policy' => ["script-sorce 'self'"]])]],
+] as $name => $data) {
+    $check("invalid profiles file reports an error: $name", csp_profiles::normalize($data)[1] !== []);
+}
+$check('save() input is the same check: an invalid set is not accepted', csp_profiles::normalize(['profiles' => [$profile(['mode' => 'nope'])]])[1] !== []);
+
+$check('exact host matches', csp_profiles::matches($profile(), 'example.org'));
+$check('host match ignores case', csp_profiles::matches($profile(['hosts' => ['Example.ORG']]), 'EXAMPLE.org'));
+$check('host match ignores the port', csp_profiles::matches($profile(), 'example.org:8443'));
+$check('host match ignores surrounding whitespace', csp_profiles::matches($profile(), ' example.org '));
+$check('another host does not match', !csp_profiles::matches($profile(), 'other.org'));
+$check('a longer host does not match by prefix or suffix', !csp_profiles::matches($profile(), 'example.org.evil.test') && !csp_profiles::matches($profile(), 'evilexample.org'));
+$check('wildcard subdomain matches', csp_profiles::matches($profile(['hosts' => ['*.example.org']]), 'www.example.org'));
+$check('wildcard subdomain does not match the bare domain', !csp_profiles::matches($profile(['hosts' => ['*.example.org']]), 'example.org'));
+$check('? matches one character', csp_profiles::matches($profile(['hosts' => ['dev?.example.org']]), 'dev1.example.org') && !csp_profiles::matches($profile(['hosts' => ['dev?.example.org']]), 'dev12.example.org'));
+$check('* alone matches every host', csp_profiles::matches($profile(['hosts' => ['*']]), 'anything.example'));
+$check('an empty host matches only *', !csp_profiles::matches($profile(), '') && csp_profiles::matches($profile(['hosts' => ['*']]), ''));
+$check('any of several patterns is enough', csp_profiles::matches($profile(['hosts' => ['a.example', 'b.example']]), 'b.example'));
+
+$p = csp_profiles::policy($profile(['policy' => ["script-src 'self' 'nonce'", 'upgrade-insecure-requests']]));
+$check('policy() builds the header from the profile lines', $p->toHeader('N') === "script-src 'self' 'nonce-N'; upgrade-insecure-requests", $p->toHeader('N'));
+$check('policy() of an empty profile is empty', csp_profiles::policy($profile(['policy' => []]))->isEmpty());
 
 $failed = 0;
 foreach ($results as [$name, $ok, $detail]) {
